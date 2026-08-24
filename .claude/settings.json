@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run python:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(bash scripts/run_quality_checks.sh)",
+      "mcp__kaggle__get_competition",
+      "mcp__kaggle__get_competition_data_files_summary",
+      "mcp__kaggle__list_competition_data_files",
+      "mcp__kaggle__get_competition_leaderboard",
+      "mcp__kaggle__get_accelerator_quota",
+      "mcp__kaggle__search_competitions",
+      "mcp__kaggle__list_forum_topics",
+      "mcp__kaggle__list_topic_messages"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/format_python.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

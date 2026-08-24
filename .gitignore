@@ -1,0 +1,76 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# OS
+.DS_Store
+
+# Data (keep directory structure via .gitkeep, ignore contents)
+data/raw/*
+data/external/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/external/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# Logs (EXPERIMENTS.md is the one artifact worth committing)
+logs/*
+!logs/.gitkeep
+!logs/EXPERIMENTS.md
+
+# Outputs (keep structure; figures/tables are regenerable, reports are worth keeping)
+outputs/figures/*
+outputs/tables/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+
+# Experiment / model artifacts
+catboost_info/
+*.cbm
+*.pkl
+*.txt.model
+
+# AI playground outputs (keep the dir, ignore generated artifacts)
+ai-src/**/output/
+ai-src/**/models/
+
+# Secrets — never commit credentials (Kaggle token lives in ~/.kaggle, outside the repo)
+**/kaggle.json
+**/signate.json
+*.key
+*.pem
+.env
+.env.*
+
+# Personal / machine-local Claude Code settings (each user has their own)
+.claude/settings.local.json
+
+# Serena cache & memories (regenerated locally)
+.serena/cache/
+.serena/memories/
+
+# Reference dumps from other people's notebooks (large; pulled on demand)
+.references/pool*/
+.references/top_notebooks/
+.references/realmlp_output/
+.references/orig_data/
+
+# User private recipes / personal playbooks (kept local, not in template)
+recipes/
+
+# Local agent extensions and generated skill metadata
+.agents/
+.claude/skills/nvidia-kaggle-skill/
+skills-lock.json
+
+# Local MCP configuration may contain user-specific servers or credentials
+.mcp.json
