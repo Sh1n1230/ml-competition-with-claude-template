@@ -2,54 +2,84 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An open-source workspace for reproducible machine-learning competitions. It combines
-leak-aware validation, experiment tracking, submission checks, and Claude Code guidance in
-one template for Kaggle, SIGNATE, atmaCup, Nishika, ProbSpace, and similar platforms.
+A workspace where **Claude Code already knows how a competition should be run.**
+
+Most of this repository is not code. It is 24 skills and 3 commands that sit between you
+and the agent, so that the things that quietly ruin a competition — a leaky fold, a gain
+smaller than the noise, a submission with the rows in the wrong order — get caught while
+they are still cheap.
+
+Works with Kaggle, SIGNATE, atmaCup, Nishika, ProbSpace and anything shaped like them.
 
 [日本語ドキュメント (Japanese README)](README.ja.md)
 
-## Why this template?
-
-- **Reproducible by default**: lock CV decisions before modeling and record every experiment.
-- **Safe with competition data**: raw and external data are immutable and ignored by Git.
-- **Claude Code-native**: `/setup`, `/eda`, `/baseline`, and platform skills provide a consistent workflow.
-- **Free tooling first**: uses `uv` and supports local CPU/CUDA/MPS plus free notebook runtimes.
-- **Quality gates included**: Ruff, mypy, pytest, secret detection, and submission validation.
-
-## Quick start
+## See it run first (no account, no download, no network)
 
 ```bash
 git clone https://github.com/<owner>/ml-competition-with-claude-template.git my-competition
 cd my-competition
 uv sync --group dev
+
+uv run python examples/quickstart/make_data.py    # competition-shaped CSVs from a bundled dataset
+uv run python examples/quickstart/train.py        # repeated stratified CV -> OOF + test predictions
+uv run python examples/quickstart/inference.py    # predictions -> submission.csv
+uv run python scripts/validate_submission.py \
+    examples/quickstart/data/submission.csv \
+    --sample examples/quickstart/data/sample_submit.csv
 ```
 
-Initialize the workspace with Claude Code:
+Four commands, about ten seconds, and you have seen the whole loop.
+[`examples/quickstart/README.md`](examples/quickstart/README.md) explains what each step is
+demonstrating and how it maps onto a real competition.
+
+## What the skills actually prevent
+
+Each skill exists because a specific mistake is expensive and easy to make.
+
+| Skill | What it is there to stop |
+|---|---|
+| `competition-workflow` | Tuning models on a fold scheme that was never right. It puts CV design **before** features, with a leak checklist, and asks you to *measure* the usual advice rather than inherit it. |
+| `experiment-log` | "I already tried that" with no record of under what conditions. Every `drop` has to name its scale, preprocessing, receiver and effect size — so a dead end stays scoped instead of becoming a ceiling. |
+| `statistical-ml-review` | Reporting a number without its assumptions, leakage risks or baseline. |
+| `safe-data-handling` | Writing to `data/raw/`. Downloaded data is immutable here, and the guard is in code, not in a comment. |
+| `path-and-io` | Absolute paths that work on one machine. Everything goes through `commons.paths`. |
+| `submit` / `validate_submission.py` | Losing a day to a submission whose ID order silently differed from the sample. |
+| `competition-platforms` | Assuming every platform splits the leaderboard, limits submissions and formats files the same way. They do not. |
+| `free-gpu` | Reaching for paid compute before free notebook runtimes have been used properly. |
+| `python-style`, `python-project-ops`, `notebook-workflow`, `dataframe-polars`, `sql-analysis`, `visualization`, `analysis-reporting` | Code and outputs that only the author can re-run. |
+| `kaggle-*` (6 skills), `signate`, `web-research` | Hand-copying competition metadata, rules and leaderboard state. |
+
+`/setup <url>` fills `.references/` from the competition page. `/eda` and `/baseline`
+then work from those facts rather than from guesses.
+
+## Quick start on a real competition
 
 ```text
 /setup https://www.kaggle.com/competitions/<competition-name>
-# or
 /setup https://signate.jp/competitions/<id>
 ```
 
-The setup command populates `.references/`, adapts `CLAUDE.md`, and prepares the
-competition-specific structure for Claude Code.
+Then put the downloaded files in `data/raw/`, and run `/eda` followed by `/baseline`.
 
-Optional dependency groups:
+Optional extras:
 
 ```bash
-uv sync --group nn   # PyTorch / tabular neural networks
-uv sync --group jp   # SIGNATE CLI and Japanese font support
+uv sync --group nn                 # PyTorch / tabular neural networks
+uv sync --group jp                 # SIGNATE CLI and Japanese font support
+cp .mcp.json.example .mcp.json     # enable the Kaggle / context7 / serena MCP servers
 ```
 
-Install all bundled agent skills into an existing competition project:
+The six `kaggle-*` skills talk to the Kaggle MCP server, so they need that last step.
+Everything else works without it.
+
+To add the skills to a project you already started:
 
 ```bash
 bash scripts/install_ml_skills.sh /path/to/my-competition
 ```
 
-The installer updates only the bundled `.claude/skills` and `.claude/commands`
-paths. It does not delete unrelated project files or locally added skills.
+It only touches the bundled `.claude/skills` and `.claude/commands` paths, and leaves
+locally added skills alone.
 
 ## Workflow
 
@@ -60,14 +90,17 @@ paths. It does not delete unrelated project files or locally added skills.
 5. **Blend only diverse, validated models** and optimize the competition metric.
 6. **Validate before submitting** with `scripts/validate_submission.py`.
 
+Step 4 is the one people skip. The log is what makes step 5 possible at all.
+
 ## Repository layout
 
 ```text
 .
 ├── .claude/               # Claude Code commands and reusable skills
 ├── .references/           # Competition facts generated by /setup
+├── examples/quickstart/   # Runnable end-to-end example (no network needed)
 ├── src/commons/           # Shared path and utility helpers
-├── src/<solution-name>/     # Stable, user-owned solutions
+├── src/<solution-name>/   # Stable, user-owned solutions
 ├── ai-src/                # Dated Claude Code playground tasks
 ├── data/
 │   ├── raw/               # Immutable downloaded data (never commit)
@@ -84,17 +117,17 @@ paths. It does not delete unrelated project files or locally added skills.
 
 ## Quality checks
 
-Run every local gate before opening a pull request:
-
 ```bash
-bash scripts/run_quality_checks.sh
-```
-
-To check a submission specifically:
-
-```bash
+bash scripts/run_quality_checks.sh                              # ruff, mypy, pytest, guards
 uv run python scripts/validate_submission.py path/to/submission.csv
 ```
+
+`validate_agent_docs.py` reports missing skills and docs as a **warning** by default —
+deleting or replacing parts of the template is a normal thing to do and should not fail
+your build. Pass `--strict` (as this repository's own CI does) to require the full set.
+
+Python 3.10 or newer. Dependency floors are deliberately loose so the template drops into
+an existing environment.
 
 ## Contributing and safety
 

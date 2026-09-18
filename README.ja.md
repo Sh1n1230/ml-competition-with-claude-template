@@ -1,117 +1,137 @@
-# ML Competition with Claude Code（日本語版）
+# ML Competition with Claude Code
 
-Claude Code とともに、機械学習コンペティション（Kaggle / SIGNATE / atmaCup / Nishika / ProbSpace 等）を高い再現性と規律を持って進めるためのオープンソース・テンプレートリポジトリです。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[English Documentation](README.md)
+**Claude Code が「コンペの進め方」を最初から知っている状態**で始めるためのワークスペースです。
 
----
+このリポジトリの中身はほとんどコードではありません。24 のスキルと 3 つのコマンドが
+あなたとエージェントの間に入り、**コンペを静かに壊すもの** — リークした fold、
+ノイズより小さい「改善」、行順がずれた提出ファイル — を、まだ安いうちに捕まえます。
 
-## これは何か
+Kaggle / SIGNATE / atmaCup / Nishika / ProbSpace と、同じ形をしたものに使えます。
 
-Kaggle / SIGNATE / atmaCup / Nishika / ProbSpace などの機械学習コンペを、再現性と
-安全性を保ちながら進めるためのオープンソース・ワークスペーステンプレートです。
-リークを避けたCV、実験ログ、提出ファイル検証、Claude Code向けの手順を最初から備えます。
+[English README](README.md)
 
-## 主な特徴
-
-- **規律重視のワークフロー**: リークのないCV設計、1実験1変更のログ記録（`logs/EXPERIMENTS.md`）、提出前フォーマット検証（`scripts/validate_submission.py`）、多様性のあるアンサンブル。
-- **完全無料・オープンソース完結**: 有償APIや有償GPUレンタルを前提とせず、ローカル計算資源（NVIDIA CUDA / Apple Silicon MPS / CPU）および無料プラットフォーム（Kaggle Notebooks GPU/TPU、Google Colab 無料枠）で動作。
-- **エンジニアリング規律の組み込み**: `uv` による高速な依存関係管理、`ruff` / `mypy` / `pytest` による静的検証、配布データ保護チェック・秘密情報検出スクリプトを完備。
-- **Claude Code向けスキル・MCP連携**: 各種プラットフォーム操作（Kaggle MCP、SIGNATE CLI）、自動セットアップ（`/setup`）、EDA（`/eda`）、ベースライン構築（`/baseline`）などのスキルを内包。
-
----
-
-## ディレクトリ構成
-
-```text
-.
-├── .claude/skills/        # Claude Code用スキル定義
-├── .references/           # コンペの一次情報・評価指標（/setup が自動生成）
-├── src/commons/           # 共通パス・ユーティリティ
-├── src/<solution-name>/     # 安定した解法モデル
-├── ai-src/                # Claude Codeの作業場（日付・タスクごとに作成）
-├── data/
-│   ├── raw/               # 不変の配布データ（gitignore対象）
-│   ├── external/          # 不変の外部データ（gitignore対象）
-│   ├── interim/           # 中間加工データ
-│   └── processed/         # 特徴量・予測値（data/processed/preds/ に OOF/test 予測）
-├── outputs/               # 図・集計表・レポート
-├── configs/               # 実験設定ファイル
-├── logs/                  # 実験管理ログ（logs/EXPERIMENTS.md）
-├── scripts/               # 提出ファイル検証・品質チェックスクリプト
-├── tests/                 # ユニットテスト（pytest）
-└── docs/agent/            # Claude Code向け規約・設計ガイドライン
-```
-
----
-
-## クイックスタート
+## まず動かしてみる（アカウント不要・ダウンロード不要・ネットワーク不要）
 
 ```bash
 git clone https://github.com/<owner>/ml-competition-with-claude-template.git my-competition
 cd my-competition
 uv sync --group dev
+
+uv run python examples/quickstart/make_data.py    # 同梱データからコンペ形式の CSV を作る
+uv run python examples/quickstart/train.py        # 反復層化CV -> OOF と test の予測を保存
+uv run python examples/quickstart/inference.py    # 予測 -> submission.csv
+uv run python scripts/validate_submission.py \
+    examples/quickstart/data/submission.csv \
+    --sample examples/quickstart/data/sample_submit.csv
 ```
 
-Claude Codeでコンペを初期化します:
+4コマンド・十数秒で一周します。各ステップが何を実演しているかは
+[`examples/quickstart/README.md`](examples/quickstart/README.md) に書いてあります。
 
-```bash
+## スキルが実際に防いでいるもの
+
+それぞれのスキルは、「高くつくのに踏みやすい失敗」に対応しています。
+
+| スキル | 何を止めるためのものか |
+|---|---|
+| `competition-workflow` | **そもそも正しくなかった fold の上でモデルを調整すること。** 特徴量より先に CV 設計を置き、リーク検査表を通し、定石を鵜呑みにせず**測ってから**採用させる |
+| `experiment-log` | 「それは前に試した」が**どの条件で**か残っていない状態。`drop` には規模・前処理・受け手・効果量を必ず書かせるので、行き止まりが**天井に化けない** |
+| `statistical-ml-review` | 前提・リークの危険・ベースラインを添えずに数字だけ報告すること |
+| `safe-data-handling` | `data/raw/` への書き込み。配布データは不変で、その保証はコメントではなくコードにある |
+| `path-and-io` | 自分の機械でしか動かない絶対パス。入出力は全て `commons.paths` を通す |
+| `submit` / `validate_submission.py` | ID の順序が sample と微妙に違う提出で1日を溶かすこと |
+| `competition-platforms` | LB の分割・投稿回数制限・ファイル形式がどこも同じだと思い込むこと |
+| `free-gpu` | 無料ノートブック環境を使い切る前に有償計算へ行くこと |
+| `python-style` / `python-project-ops` / `notebook-workflow` / `dataframe-polars` / `sql-analysis` / `visualization` / `analysis-reporting` | 書いた本人にしか再実行できないコードと成果物 |
+| `kaggle-*`（6本） / `signate` / `web-research` | コンペ情報・規約・LB 状態の手作業コピー |
+
+`/setup <url>` がコンペページから `.references/` を埋め、`/eda` と `/baseline` は
+推測ではなくその事実から動きます。
+
+## 実際のコンペで始める
+
+```text
 /setup https://www.kaggle.com/competitions/<competition-name>
-# または
 /setup https://signate.jp/competitions/<id>
 ```
 
-`/setup` はプラットフォームを判定し、`.references/` とコンペ用構成を準備します。
-コンペ固有情報は `.references/` に記録し、Claude Codeから各コマンドを実行します。追加機能は `uv sync --group nn`（PyTorch）、
-`uv sync --group jp`（SIGNATE向け）で導入できます。
+ダウンロードしたファイルを `data/raw/` に置き、`/eda` → `/baseline` と進みます。
 
-既存のコンペプロジェクトへ同梱スキルを一括導入するには、次を実行します:
+任意の追加:
+
+```bash
+uv sync --group nn                 # PyTorch / tabular NN
+uv sync --group jp                 # SIGNATE CLI と日本語フォント
+cp .mcp.json.example .mcp.json     # Kaggle / context7 / serena の MCP を有効化
+```
+
+`kaggle-*` の6スキルは Kaggle MCP サーバを使うので、最後の1行が必要です。
+それ以外は無しでも動きます。
+
+すでに始めたプロジェクトにスキルだけ入れる場合:
 
 ```bash
 bash scripts/install_ml_skills.sh /path/to/my-competition
 ```
 
-同名の同梱ファイルだけを更新し、独自スキルやその他のプロジェクトファイルは削除しません。
+同梱の `.claude/skills` と `.claude/commands` だけを更新し、自分で足したスキルには触りません。
 
----
+## ワークフロー
 
-## コンペ進行フェーズ
+1. `/eda` でデータを理解し、リークの可能性を点検する
+2. モデルを触る前に、**誠実な CV** と seed を固定する
+3. `/baseline` でベースラインを作り、OOF と test 予測を保存する
+4. **一度に1つだけ変え**、結果を `logs/EXPERIMENTS.md` に記録する
+5. 検証済みで**多様な**モデルだけを結合し、コンペの指標を最適化する
+6. `scripts/validate_submission.py` を通してから提出する
 
-1. **P0: データ理解 & リーク検査** (`/eda`) — 行順、ID相関、分布差、時間構造を検証
-2. **P1: CV設計の固定** — StratifiedKFold / GroupKFold / TimeSeriesSplit とシードを固定
-3. **P2: ベースライン構築** (`/baseline`) — GBDT等でシンプルなモデルを作成し `data/processed/preds/` に保存
-4. **P3: 特徴量エンジニアリング** — 1実験1変更で効果を検証
-5. **P4: モデルの多様性** — 異なるモデル（GBDT複数種 + NN）を追加
-6. **P5: アンサンブル & Stacking** — 予測値のブレンディングと決定ルール（閾値等）の最適化
-7. **P6: 提出ファイル検証 & 提出** (`/submit`) — フォーマットを検証（`scripts/validate_submission.py`）して投稿
+飛ばされがちなのは 4 です。**5 を可能にしているのは 4 の記録**です。
 
----
+## ディレクトリ構成
 
-## 品質・セキュリティチェック
-
-以下のコマンドでリポジトリ全体の品質チェックを一括実行できます:
-
-```bash
-bash scripts/run_quality_checks.sh
+```text
+.
+├── .claude/               # Claude Code のコマンドとスキル
+├── .references/           # /setup が生成するコンペ事実
+├── examples/quickstart/   # ネットワーク不要の実行可能サンプル
+├── src/commons/           # 共通のパス・ユーティリティ
+├── src/<solution-name>/   # 安定した解法（ユーザー所有）
+├── ai-src/                # 日付つきの作業場
+├── data/
+│   ├── raw/               # 配布データ（不変・コミット禁止）
+│   ├── external/          # 外部データ（不変・コミット禁止）
+│   ├── interim/           # 中間生成物
+│   └── processed/         # 特徴量と予測
+├── outputs/               # 図・表・レポート
+├── configs/               # 実験設定
+├── logs/                  # 実験ログ
+├── scripts/               # 検証と品質チェック
+├── tests/                 # テスト
+└── docs/agent/            # ワークフローと安全指針
 ```
 
-- **リント & フォーマット**: `uv run ruff check .` / `uv run ruff format --check .`
-- **型検査**: `uv run mypy src scripts`
-- **テスト**: `uv run pytest`
-- **データ保護検査**: `uv run python scripts/check_no_raw_data_commit.py`
-- **秘密情報検査**: `uv run python scripts/check_no_sensitive_patterns.py`
-- **ドキュメント整合性検査**: `uv run python scripts/validate_agent_docs.py`
+## 品質チェック
 
----
+```bash
+bash scripts/run_quality_checks.sh                              # ruff / mypy / pytest / ガード
+uv run python scripts/validate_submission.py path/to/submission.csv
+```
 
-## コントリビューションと安全性
+`validate_agent_docs.py` は既定では欠損を**警告**として報告します。テンプレートの一部を
+削る・差し替えるのは正当な使い方で、それでビルドを落とすべきではないからです。
+全ファイルを必須にしたいときは `--strict`（本リポジトリ自身の CI はこちら）。
 
-改善提案は歓迎します。まず [CONTRIBUTING.md](CONTRIBUTING.md) を確認してください。
-配布データ、認証情報、APIキー、個人情報はコミットしないでください。
-脆弱性の報告方法は [SECURITY.md](SECURITY.md) を参照してください。
+Python 3.10 以上。既存環境に載せやすいよう、依存の下限は意図的に緩めてあります。
 
----
+## 貢献と安全性
 
-## ライセンス
+貢献を歓迎します。まず [CONTRIBUTING.md](CONTRIBUTING.md) をお読みください。
+コンペのデータセット・認証情報・API キー・個人情報は絶対にコミットしないでください。
+脆弱性の報告は [SECURITY.md](SECURITY.md) を参照してください。
 
-本リポジトリは [MIT License](LICENSE) のもとで公開されています。
+## クレジットとライセンス
+
+本ワークフローは OSS データサイエンス／Kaggle コミュニティの一般的な実践に基づいています。
+ライセンスは MIT（[LICENSE](LICENSE)）。

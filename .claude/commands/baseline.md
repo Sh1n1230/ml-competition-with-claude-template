@@ -1,5 +1,5 @@
 ---
-description: Create a baseline (CV-correct training + inference) using recipes/, and record it in the experiment log
+description: Create a baseline (CV-correct training + inference) under src/, and record it in the experiment log
 argument-hint: [solution-dir-name]
 ---
 
