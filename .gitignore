@@ -74,3 +74,10 @@ skills-lock.json
 
 # Local MCP configuration may contain user-specific servers or credentials
 .mcp.json
+
+# quickstart example: generated, not tracked
+examples/quickstart/data/
+
+# type-checker cache
+.mypy_cache/
+.ruff_cache/
