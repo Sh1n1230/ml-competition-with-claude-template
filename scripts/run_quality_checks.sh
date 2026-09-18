@@ -20,6 +20,6 @@ echo "=== Check no sensitive patterns ==="
 uv run python scripts/check_no_sensitive_patterns.py
 
 echo "=== Validate agent docs ==="
-uv run python scripts/validate_agent_docs.py
+uv run python scripts/validate_agent_docs.py --strict
 
 echo "=== All checks passed ==="
