@@ -100,8 +100,10 @@ def main() -> None:
         for m in missing:
             print(f"  - {m}")
         if not args.strict:
-            print("  (テンプレートから削った／差し替えたなら想定どおり。"
-                  "揃っていることを強制したいときは --strict)")
+            print(
+                "  (テンプレートから削った／差し替えたなら想定どおり。"
+                "揃っていることを強制したいときは --strict)"
+            )
 
     # 有償ツール依存だけは --strict に関係なく失敗させる。
     if forbidden:
